@@ -33,10 +33,15 @@ Text:
         model="gpt-4.1-mini",
         input=prompt,
     )
+    
     result_text = response.output_text
-    data = json.loads(result_text)
+    try:
+        data = json.loads(result_text)
+    except json.JSONDecodeError:
+        print("Failed to parse OpenAI response as JSON.")
+        return None
+    
     return data
-
 
 def main():
     if len(sys.argv) < 2:
