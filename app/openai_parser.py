@@ -38,17 +38,23 @@ Text:
     return data
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) < 2:
         print("Usage: python -m app.openai_parser <pdf_path>")
-    else:
-        pdf_path = sys.argv[1]
-        pdf_text = extract_text_from_pdf(pdf_path)
+        return
+        
+    pdf_path = sys.argv[1]
+    pdf_text = extract_text_from_pdf(pdf_path)
 
-        if not pdf_text:
-            print("No text extracted from the PDF.")
-        else:
-            result = parse_hearing_text(pdf_text)
+    if not pdf_text:
+        print("No text extracted from the PDF.")
+        return
+    
+    result = parse_hearing_text(pdf_text)
 
-            if result:
-                print(result)
+    if result:
+        print(result)
+
+
+if __name__ == "__main__":
+    main()
