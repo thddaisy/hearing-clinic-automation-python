@@ -37,4 +37,4 @@ if __name__ == "__main__":
         pdf_text = extract_text_from_pdf(pdf_path)
         
         if pdf_text:
-        print(pdf_text)
+            print(pdf_text)
