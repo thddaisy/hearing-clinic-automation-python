@@ -3,6 +3,7 @@ import sys
 from openai import OpenAI
 from app.config import OPENAI_API_KEY
 from app.pdf_reader import extract_text_from_pdf
+from app.csv_writer import save_record_to_csv
 
 
 def parse_hearing_text(text):
@@ -37,11 +38,13 @@ Text:
     result_text = response.output_text
     try:
         data = json.loads(result_text)
+
     except json.JSONDecodeError:
         print("Failed to parse OpenAI response as JSON.")
         return None
     
     return data
+
 
 def main():
     if len(sys.argv) < 2:
@@ -59,6 +62,7 @@ def main():
 
     if result:
         print(result)
+        save_record_to_csv(result, "data/parsed_records.csv")
 
 
 if __name__ == "__main__":
