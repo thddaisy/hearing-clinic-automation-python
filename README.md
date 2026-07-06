@@ -229,3 +229,179 @@ Output file:
 
 ```bash
 data/parsed_records.csv
+```
+
+Run the OpenAI Parser from the project root directory:
+
+```bash
+python -m app.openai_parser data/sample_pdfs/sample_001.pdf
+```
+
+The parsed result is printed in the terminal and appended to the CSV file.
+
+Example CSV output:
+
+```csv
+patient_name,clinic_name,consultation_date,doctor,audiologist,chart_no,ear_side,demo_model,record_type,device_model,total_amount,summary
+Sophia Turner,Christchurch ENT Clinic,04-06-2026,James Hargreaves,Daisy Song,P1-007,Right,,Repair Completed,Signia Styletto X,,"Sophia's right Signia Styletto X hearing aid was repaired..."
+```
+
+Missing values are saved as empty CSV cells.
+
+For example, if `demo_model` or `total_amount` is missing, the CSV may show empty fields:
+
+```csv
+Sophia Turner,Christchurch ENT Clinic,04-06-2026,James Hargreaves,Daisy Song,P1-007,Right,,Repair Completed,Signia Styletto X,,
+```
+
+These empty fields can later be converted to `NULL` when inserting records into PostgreSQL.
+
+### Current Features
+
+* Saves parsed OpenAI results into a CSV file
+* Uses Python's built-in `csv` module
+* Uses `csv.DictWriter` to write dictionary data as CSV rows
+* Writes the CSV header only when the file does not already exist
+* Appends new records without deleting existing records
+* Saves missing values as empty CSV cells
+
+## Batch PDF Processing
+
+The Batch Processor processes multiple PDF files from a folder.
+
+It finds all `.pdf` files in a given folder, extracts text from each file, sends the text to the OpenAI Parser, and saves each parsed result to the CSV file.
+
+This feature extends the automation pipeline from processing one PDF at a time to processing multiple PDF files automatically.
+
+```text
+PDF folder
+→ find PDF files
+→ process each PDF
+→ extract text
+→ OpenAI parsing
+→ structured data
+→ CSV export
+```
+
+### Current Features
+
+* Receives a folder path from a terminal argument
+* Checks whether the folder exists
+* Checks whether the path is a folder
+* Finds all `.pdf` files in the folder using `Path.glob("*.pdf")`
+* Converts the found files into a list
+* Handles empty folders with no PDF files
+* Processes each PDF file one by one
+* Skips PDFs with no extractable text
+* Skips records when OpenAI parsing fails
+* Saves successful parsed records to `data/parsed_records.csv`
+
+### Usage
+
+Run the Batch Processor from the project root directory:
+
+```bash
+python -m app.batch_processor data/sample_pdfs
+```
+
+Example output:
+
+```text
+Processing: data\sample_pdfs\sample_001.pdf
+Saved to CSV.
+Processing: data\sample_pdfs\sample_002.pdf
+Saved to CSV.
+Processing: data\sample_pdfs\sample_003.pdf
+Saved to CSV.
+Processing: data\sample_pdfs\sample_004.pdf
+Saved to CSV.
+Processing: data\sample_pdfs\sample_005.pdf
+Saved to CSV.
+```
+
+If no folder path is provided:
+
+```text
+Usage: python -m app.batch_processor <folder_path>
+```
+
+If the folder does not exist:
+
+```text
+Folder does not exist.
+```
+
+If the path is not a folder:
+
+```text
+Path is not a folder.
+```
+
+If no PDF files are found:
+
+```text
+No PDF files found in the folder.
+```
+
+## Updated Project Pipeline
+
+The current project can now process one PDF or multiple PDFs.
+
+Single PDF flow:
+
+```text
+PDF file
+→ text extraction
+→ OpenAI parsing
+→ structured data
+→ CSV export
+```
+
+Batch PDF flow:
+
+```text
+PDF folder
+→ PDF file list
+→ text extraction for each PDF
+→ OpenAI parsing for each PDF
+→ structured data
+→ CSV export
+```
+
+## Updated What I Learned
+
+While building the CSV Export feature, I learned and practiced:
+
+* How to use Python's built-in `csv` module
+* How to create a separate file for a specific responsibility
+* How to write a dictionary to a CSV file using `csv.DictWriter`
+* How dictionary keys become CSV column names
+* How dictionary values become CSV row values
+* Why the CSV header should only be written once
+* How to check whether a file already exists with `Path.exists()`
+* Why append mode `"a"` is used instead of write mode `"w"`
+* How missing Python values can appear as empty cells in CSV
+
+While building the Batch Processor, I learned and practiced:
+
+* How to process multiple files from a folder
+* How to use `Path.glob("*.pdf")` to find PDF files
+* Why `list()` is useful when working with found files
+* How to check whether a path is a folder with `Path.is_dir()`
+* How to use a `for` loop to process files one by one
+* How `continue` skips the current loop and moves to the next file
+* How to connect multiple project modules together
+* How to build a simple automation pipeline from reusable functions
+
+## Next Steps
+
+Planned next steps:
+
+* Refactor repeated file path values into configuration
+* Add better logging for successful and failed processing
+* Prevent duplicate CSV records
+* Design a PostgreSQL table for hearing clinic chart records
+* Convert empty CSV values to PostgreSQL `NULL`
+* Insert parsed records into PostgreSQL
+* Add automated reporting
+* Add Google API integration
