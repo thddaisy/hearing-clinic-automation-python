@@ -221,24 +221,11 @@ While building the OpenAI Parser, I learned and practiced:
 * How to connect functions from different files using imports
 * How to run a module with `python -m app.openai_parser`
 
-## Next Steps
+## CSV Export
 
-The PDF Reader and OpenAI Parser are now connected.
+Parsed hearing clinic records can be saved to a CSV file.
 
-The next planned steps are:
+Output file:
 
-```text
-structured data
-→ CSV export or PostgreSQL storage
-→ automated reporting
-→ Google API integration
-```
-
-Planned features:
-
-* Refactor the script execution flow into a dedicated `main()` function
-* Add better error handling for invalid OpenAI JSON responses
-* Save parsed data into a CSV file
-* Design a PostgreSQL table for hearing clinic chart records
-* Insert parsed records into PostgreSQL
-* Add logging for successful and failed processing
+```bash
+data/parsed_records.csv
