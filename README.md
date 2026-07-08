@@ -283,6 +283,15 @@ PDF folder
 → CSV export
 ```
 
+### Duplicate Prevention
+
+The batch processor prevents duplicate CSV records by checking the `chart_no` field before saving parsed data.
+
+If a record with the same `chart_no` already exists in `data/parsed_records.csv`, the processor skips the record and prints:
+
+```text
+Duplicate record. Skipping.
+
 ### Current Features
 
 * Receives a folder path from a terminal argument
@@ -397,11 +406,10 @@ While building the Batch Processor, I learned and practiced:
 
 Planned next steps:
 
+* Add automated email reporting
 * Refactor repeated file path values into configuration
 * Add better logging for successful and failed processing
-* Prevent duplicate CSV records
 * Design a PostgreSQL table for hearing clinic chart records
-* Convert empty CSV values to PostgreSQL `NULL`
+* Convert empty CSV values to PostgreSQL NULL
 * Insert parsed records into PostgreSQL
-* Add automated reporting
 * Add Google API integration
