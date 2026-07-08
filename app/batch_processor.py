@@ -3,7 +3,7 @@ from pathlib import Path
 
 from app.pdf_reader import extract_text_from_pdf
 from app.openai_parser import parse_hearing_text
-from app.csv_writer import save_record_to_csv
+from app.csv_writer import save_record_to_csv, is_duplicate_record
 
 
 def main():
@@ -39,6 +39,10 @@ def main():
 
         if not result:
             print("Parsing failed. Skipping.")
+            continue
+
+        if is_duplicate_record(result,"data/parsed_records.csv"):
+            print("Duplicate record. Skipping.")
             continue
 
         save_record_to_csv(result, "data/parsed_records.csv")
