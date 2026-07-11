@@ -2,28 +2,112 @@
 
 Python implementation of the Hearing Clinic Automation workflow.
 
-This project rebuilds an existing n8n automation workflow in Python, step by step, to process hearing clinic PDF documents and convert them into structured data.
+This project rebuilds an existing n8n automation workflow in Python, step by step, to process hearing clinic PDF documents, extract structured data, save records to CSV, and generate monthly reporting output.
+
+The goal of this project is not only to recreate the automation, but also to learn practical Python backend development through a real workflow.
 
 ## Project Pipeline
 
 The current automation pipeline is:
 
 ```text
-PDF file
+PDF files
 → text extraction
 → OpenAI parsing
 → structured data
-→ CSV or database storage
-→ reporting or automation
+→ CSV export
+→ duplicate prevention
+→ sales CSV reporting
+→ monthly email preview
+```
+
+The project currently supports two main workflows:
+
+```text
+1. PDF Processing Workflow
+
+PDF file or folder
+→ text extraction
+→ OpenAI parsing
+→ structured data
+→ CSV export
+```
+
+```text
+2. Monthly Sales Reporting Workflow
+
+Sales CSV
+→ read sales records
+→ calculate monthly sales summary
+→ calculate hospital-level summary
+→ generate email preview
+```
+
+## Project Structure
+
+```text
+hearing-clinic-automation-python/
+
+├── app/
+│   ├── __init__.py
+│   ├── pdf_reader.py
+│   ├── config.py
+│   ├── logger.py
+│   ├── openai_parser.py
+│   ├── csv_writer.py
+│   ├── batch_processor.py
+│   └── email_reporter.py
+│
+├── data/
+│   ├── sample_pdfs/
+│   │   ├── sample_001.pdf
+│   │   ├── sample_002.pdf
+│   │   ├── sample_003.pdf
+│   │   ├── sample_004.pdf
+│   │   └── sample_005.pdf
+│   │
+│   ├── parsed_records.csv
+│   └── clinic_sales_records.csv
+│
+├── docs/
+├── tests/
+├── .env
+├── .gitignore
+├── requirements.txt
+└── README.md
+```
+
+## Environment Variables
+
+This project uses a `.env` file to store sensitive configuration values.
+
+Create a `.env` file in the project root directory:
+
+```env
+OPENAI_API_KEY=your_api_key_here
+```
+
+The `.env` file must not be committed to GitHub.
+
+Make sure `.gitignore` includes:
+
+```text
+.env
+.venv/
 ```
 
 ## PDF Reader
 
 The PDF Reader is the first feature of this project.
 
-It reads a PDF file, extracts text from all pages, and prints the extracted text in the terminal.
+It reads a PDF file, extracts text from all pages, and returns the extracted text as a single string.
 
 This feature is the foundation for the next steps of the automation pipeline.
+
+```text
+PDF file
+→ text extraction
+```
 
 ### Current Features
 
@@ -33,7 +117,8 @@ This feature is the foundation for the next steps of the automation pipeline.
 * Checks whether the input path exists
 * Checks whether the input path is a file
 * Checks whether the file extension is `.pdf`
-* Prints the extracted text in the terminal
+* Returns extracted text for reuse by other modules
+* Prints the extracted text when run directly
 
 ### Usage
 
@@ -77,9 +162,7 @@ File is not a PDF.
 
 ## OpenAI Parser
 
-The OpenAI Parser is the second feature of this project.
-
-It takes extracted text from a hearing clinic PDF and sends it to the OpenAI API.
+The OpenAI Parser takes extracted text from a hearing clinic PDF and sends it to the OpenAI API.
 
 The response is returned as structured JSON-like data and converted into a Python dictionary.
 
@@ -90,8 +173,6 @@ PDF file
 → text extraction
 → OpenAI parsing
 → structured data
-→ CSV or database storage
-→ reporting or automation
 ```
 
 ### Current Features
@@ -153,7 +234,7 @@ Example output:
 }
 ```
 
-### OpenAI Parser Error Handling
+### Error Handling
 
 If the API key is missing:
 
@@ -173,54 +254,6 @@ If no text can be extracted from the PDF:
 No text extracted from the PDF.
 ```
 
-## Environment Variables
-
-This project uses a `.env` file to store sensitive configuration values.
-
-Create a `.env` file in the project root directory:
-
-```env
-OPENAI_API_KEY=your_api_key_here
-```
-
-The `.env` file must not be committed to GitHub.
-
-Make sure `.gitignore` includes:
-
-```text
-.env
-.venv/
-```
-
-## What I Learned
-
-While building the PDF Reader, I learned and practiced:
-
-* How to use `pypdf` to read PDF files
-* The difference between installing a package and importing it
-* How to use `pathlib.Path` for file paths
-* How to use `sys.argv` to receive terminal arguments
-* How to check whether a file exists with `Path.exists()`
-* How to check whether a path is a file with `Path.is_file()`
-* How to check file extensions with `Path.suffix`
-* How to handle `None` values from `extract_text()`
-* How `if text:` works with truthy and falsy values
-* How `return` sends a result back from a function
-* How to separate reusable function logic from script execution logic
-
-While building the OpenAI Parser, I learned and practiced:
-
-* How to load environment variables from a `.env` file
-* Why API keys should not be hardcoded in source code
-* How to create an OpenAI client
-* How to send extracted PDF text to the OpenAI API
-* How to design a prompt for structured JSON output
-* Why prompts should prevent guessing or inferred values
-* How markdown code fences can break `json.loads()`
-* How to convert a JSON string into a Python dictionary
-* How to connect functions from different files using imports
-* How to run a module with `python -m app.openai_parser`
-
 ## CSV Export
 
 Parsed hearing clinic records can be saved to a CSV file.
@@ -231,15 +264,23 @@ Output file:
 data/parsed_records.csv
 ```
 
-Run the OpenAI Parser from the project root directory:
+The CSV Export feature saves a parsed Python dictionary as a CSV row.
 
-```bash
-python -m app.openai_parser data/sample_pdfs/sample_001.pdf
+```text
+structured data
+→ CSV export
 ```
 
-The parsed result is printed in the terminal and appended to the CSV file.
+### Current Features
 
-Example CSV output:
+* Saves parsed OpenAI results into a CSV file
+* Uses Python's built-in `csv` module
+* Uses `csv.DictWriter` to write dictionary data as CSV rows
+* Writes the CSV header only when the file does not already exist
+* Appends new records without deleting existing records
+* Saves missing values as empty CSV cells
+
+### Example CSV Output
 
 ```csv
 patient_name,clinic_name,consultation_date,doctor,audiologist,chart_no,ear_side,demo_model,record_type,device_model,total_amount,summary
@@ -255,15 +296,6 @@ Sophia Turner,Christchurch ENT Clinic,04-06-2026,James Hargreaves,Daisy Song,P1-
 ```
 
 These empty fields can later be converted to `NULL` when inserting records into PostgreSQL.
-
-### Current Features
-
-* Saves parsed OpenAI results into a CSV file
-* Uses Python's built-in `csv` module
-* Uses `csv.DictWriter` to write dictionary data as CSV rows
-* Writes the CSV header only when the file does not already exist
-* Appends new records without deleting existing records
-* Saves missing values as empty CSV cells
 
 ## Batch PDF Processing
 
@@ -291,6 +323,7 @@ If a record with the same `chart_no` already exists in `data/parsed_records.csv`
 
 ```text
 Duplicate record. Skipping.
+```
 
 ### Current Features
 
@@ -303,6 +336,7 @@ Duplicate record. Skipping.
 * Processes each PDF file one by one
 * Skips PDFs with no extractable text
 * Skips records when OpenAI parsing fails
+* Checks duplicate records by `chart_no`
 * Saves successful parsed records to `data/parsed_records.csv`
 
 ### Usage
@@ -326,6 +360,13 @@ Processing: data\sample_pdfs\sample_004.pdf
 Saved to CSV.
 Processing: data\sample_pdfs\sample_005.pdf
 Saved to CSV.
+```
+
+If the same records already exist in the CSV file:
+
+```text
+Processing: data\sample_pdfs\sample_001.pdf
+Duplicate record. Skipping.
 ```
 
 If no folder path is provided:
@@ -352,9 +393,102 @@ If no PDF files are found:
 No PDF files found in the folder.
 ```
 
+## Email Reporter
+
+The Email Reporter generates a monthly sales report from a clinic sales CSV file.
+
+This feature is part of the reporting stage of the automation pipeline. It reads sales records, calculates total revenue, summarizes sales by hospital, and prints an email preview in the terminal.
+
+The current version does not send real emails yet. It only generates a preview so the report content can be checked safely before email sending is added.
+
+```text
+Sales CSV
+→ read sales records
+→ calculate monthly sales summary
+→ calculate hospital-level summary
+→ generate email preview
+```
+
+### Input File
+
+The Email Reporter uses the following sample sales CSV file:
+
+```bash
+data/clinic_sales_records.csv
+```
+
+The sales CSV contains monthly clinic transaction records such as:
+
+```text
+record_id
+record_date
+hospital_id
+patient_name
+chart_no
+doctor_name
+audiologist_name
+transaction_type
+brand
+product_model
+ear_side
+sale_price_nzd
+repair_fee_nzd
+memo
+```
+
+### Current Features
+
+* Reads sales records from a CSV file
+* Counts the total number of records
+* Calculates total hearing aid sales
+* Calculates total repair fees
+* Calculates total revenue
+* Groups sales records by `hospital_id`
+* Calculates hospital-level sales, repair fees, and revenue
+* Generates a monthly sales email preview
+* Prints the email preview in the terminal
+* Keeps real email sending separate for a future step
+
+### Usage
+
+Run the Email Reporter from the project root directory:
+
+```bash
+python -m app.email_reporter data/clinic_sales_records.csv
+```
+
+Example output:
+
+```text
+To: company@example.com
+Subject: Monthly Hearing Clinic Sales Report
+
+Total records: 96
+Total sales: NZD 243,700.00
+Total repair fees: NZD 3,880.00
+Total revenue: NZD 247,580.00
+
+Hospital Summary:
+- H-001 | Records: 32 | Sales: NZD 90,600.00 | Repairs: NZD 1,400.00 | Revenue: NZD 92,000.00
+- H-002 | Records: 32 | Sales: NZD 74,900.00 | Repairs: NZD 1,280.00 | Revenue: NZD 76,180.00
+- H-003 | Records: 32 | Sales: NZD 78,200.00 | Repairs: NZD 1,200.00 | Revenue: NZD 79,400.00
+```
+
+If no CSV path is provided:
+
+```text
+Usage: python -m app.email_reporter <csv_path>
+```
+
+If the CSV file does not exist:
+
+```text
+CSV file not found.
+```
+
 ## Updated Project Pipeline
 
-The current project can now process one PDF or multiple PDFs.
+The current project can now process one PDF, process multiple PDFs, prevent duplicate parsed records, and generate a monthly sales email preview.
 
 Single PDF flow:
 
@@ -374,42 +508,46 @@ PDF folder
 → text extraction for each PDF
 → OpenAI parsing for each PDF
 → structured data
+→ duplicate check
 → CSV export
 ```
 
-## Updated What I Learned
+Email reporting flow:
 
-While building the CSV Export feature, I learned and practiced:
+```text
+Sales CSV
+→ monthly sales summary
+→ hospital-level summary
+→ email preview
+```
 
-* How to use Python's built-in `csv` module
-* How to create a separate file for a specific responsibility
-* How to write a dictionary to a CSV file using `csv.DictWriter`
-* How dictionary keys become CSV column names
-* How dictionary values become CSV row values
-* Why the CSV header should only be written once
-* How to check whether a file already exists with `Path.exists()`
-* Why append mode `"a"` is used instead of write mode `"w"`
-* How missing Python values can appear as empty cells in CSV
+Current MVP flow:
 
-While building the Batch Processor, I learned and practiced:
-
-* How to process multiple files from a folder
-* How to use `Path.glob("*.pdf")` to find PDF files
-* Why `list()` is useful when working with found files
-* How to check whether a path is a folder with `Path.is_dir()`
-* How to use a `for` loop to process files one by one
-* How `continue` skips the current loop and moves to the next file
-* How to connect multiple project modules together
-* How to build a simple automation pipeline from reusable functions
+```text
+PDF files
+→ text extraction
+→ OpenAI parsing
+→ structured data
+→ CSV export
+→ sales CSV reporting
+→ monthly email preview
+```
 
 ## Next Steps
 
 Planned next steps:
 
-* Add automated email reporting
+* Add real email sending with SMTP or Gmail API
+* Move company email settings into environment variables
+* Add scheduled monthly reports with APScheduler
 * Refactor repeated file path values into configuration
 * Add better logging for successful and failed processing
 * Design a PostgreSQL table for hearing clinic chart records
-* Convert empty CSV values to PostgreSQL NULL
-* Insert parsed records into PostgreSQL
+* Design a PostgreSQL table for sales transactions
+* Convert empty CSV values to PostgreSQL `NULL`
+* Insert parsed records and sales records into PostgreSQL
 * Add Google API integration
+* Add Docker support for deployment
+
+```
+```
