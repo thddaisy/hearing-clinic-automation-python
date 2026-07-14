@@ -1,9 +1,7 @@
 import csv
 import sys
 from pathlib import Path
-
-
-COMPANY_EMAIL = "company@example.com"
+from app.config import REPORT_RECIPIENT_EMAIL
 
 
 def read_sales_records(csv_path):
@@ -114,7 +112,7 @@ def main():
     subject, body = build_monthly_sales_email(summary)
 
     print()
-    print(f"To: {COMPANY_EMAIL}")
+    print(f"To: {REPORT_RECIPIENT_EMAIL}")
     print(f"Subject: {subject}")
     print(body)
 
