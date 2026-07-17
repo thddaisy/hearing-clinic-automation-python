@@ -1,8 +1,8 @@
 # Hearing Clinic Automation (Python)
 
-A Python backend automation project that processes hearing clinic PDF charts, extracts structured data with the OpenAI API, saves parsed records to CSV, prevents duplicate entries, and generates a monthly sales email report preview.
+A Python backend automation project that processes hearing clinic PDF charts, extracts structured data with the OpenAI API, prevents duplicate records, saves results to CSV, generates monthly sales reports, and sends them through the Gmail API.
 
-This project rebuilds an existing n8n automation workflow in Python with a modular backend structure.
+This project rebuilds an existing n8n automation workflow in Python using a modular backend structure.
 
 ## Overview
 
@@ -15,8 +15,8 @@ PDF files
 → text extraction
 → OpenAI parsing
 → structured records
-→ CSV export
 → duplicate prevention
+→ CSV export
 ```
 
 ```text
@@ -25,20 +25,26 @@ PDF files
 Sales CSV
 → monthly sales summary
 → hospital-level summary
-→ email report preview
+→ email subject and body generation
+→ Gmail API delivery
 ```
 
 ## Features
 
-- Extract text from hearing clinic PDF charts
-- Parse chart text into structured data using the OpenAI API
-- Save parsed records to CSV
-- Prevent duplicate records using `chart_no`
-- Process multiple PDF files in batch
-- Read monthly sales records from CSV
-- Calculate total sales, repair fees, and revenue
-- Generate hospital-level sales summaries
-- Print a monthly sales email report preview
+* Extract text from hearing clinic PDF charts
+* Parse chart text into structured data using the OpenAI API
+* Save parsed records to CSV
+* Prevent duplicate records using `chart_no`
+* Process multiple PDF files in batch
+* Read monthly sales records from CSV
+* Calculate total sales, repair fees, and revenue
+* Generate hospital-level sales summaries
+* Build a monthly sales email subject and body
+* Preview the generated report in the terminal
+* Authenticate with Google using OAuth 2.0
+* Save and reuse Gmail authentication tokens
+* Send monthly reports through the Gmail API
+* Load sensitive configuration values from environment variables
 
 ## Project Structure
 
@@ -52,6 +58,7 @@ hearing-clinic-automation-python/
 │   ├── csv_writer.py
 │   ├── batch_processor.py
 │   ├── email_reporter.py
+│   ├── email_sender.py
 │   ├── config.py
 │   └── logger.py
 │
@@ -68,29 +75,34 @@ hearing-clinic-automation-python/
 │
 ├── docs/
 ├── tests/
-├── .env
 ├── .gitignore
 ├── requirements.txt
 └── README.md
 ```
 
+Local configuration files such as `.env`, `credentials.json`, and `token.json` are excluded from Git.
+
 ## Tech Stack
 
 Current:
 
-- Python
-- OpenAI API
-- CSV
-- pypdf
-- python-dotenv
-- Git / GitHub
+* Python
+* OpenAI API
+* Gmail API
+* Google OAuth 2.0
+* CSV
+* pypdf
+* python-dotenv
+* Google API Python Client
+* Git / GitHub
 
 Planned:
 
-- PostgreSQL
-- Docker
-- Google APIs
-- APScheduler
+* PostgreSQL
+* Docker
+* APScheduler
+* Automated tests
+* Structured logging
 
 ## Setup
 
@@ -110,23 +122,47 @@ pip install -r requirements.txt
 Create a `.env` file in the project root directory.
 
 ```env
-OPENAI_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+REPORT_RECIPIENT_EMAIL=recipient@example.com
 ```
 
 The `.env` file must not be committed to GitHub.
 
 Make sure `.gitignore` includes:
 
-```text
+```gitignore
 .env
 .venv/
+credentials.json
+token.json
 ```
+
+## Gmail API Setup
+
+To enable email delivery:
+
+1. Enable the Gmail API in Google Cloud.
+2. Configure the OAuth consent screen.
+3. Create an OAuth Client ID using the `Desktop app` application type.
+4. Download the OAuth JSON file.
+5. Rename it to `credentials.json`.
+6. Place it in the project root directory.
+
+The first time the reporting workflow runs, a browser window opens for Google login and permission approval.
+
+After successful authentication, the program automatically creates:
+
+```text
+token.json
+```
+
+This file stores the authorized Gmail credentials locally and is reused for future executions.
 
 ## Usage
 
-### Process a single PDF
+Run all commands from the project root directory.
 
-Run from the project root directory:
+### Process a single PDF
 
 ```bash
 python -m app.openai_parser data/sample_pdfs/sample_001.pdf
@@ -136,19 +172,18 @@ This extracts text from the PDF, sends it to the OpenAI API, converts the respon
 
 ### Process multiple PDFs
 
-Run from the project root directory:
-
 ```bash
 python -m app.batch_processor data/sample_pdfs
 ```
 
-This processes all `.pdf` files in the given folder.
+This processes all `.pdf` files in the selected folder.
 
 Example output:
 
 ```text
 Processing: data\sample_pdfs\sample_001.pdf
 Saved to CSV.
+
 Processing: data\sample_pdfs\sample_002.pdf
 Saved to CSV.
 ```
@@ -159,18 +194,29 @@ If a record with the same `chart_no` already exists, it is skipped.
 Duplicate record. Skipping.
 ```
 
-### Generate a monthly sales email preview
-
-Run from the project root directory:
+### Generate and send a monthly sales report
 
 ```bash
 python -m app.email_reporter data/clinic_sales_records.csv
 ```
 
+This command:
+
+```text
+reads the sales CSV
+→ calculates monthly totals
+→ creates hospital-level summaries
+→ builds the email subject and body
+→ prints a terminal preview
+→ sends the report through the Gmail API
+```
+
 Example output:
 
 ```text
-To: company@example.com
+Loaded 96 records.
+
+To: recipient@example.com
 Subject: Monthly Hearing Clinic Sales Report
 
 Total records: 96
@@ -182,7 +228,11 @@ Hospital Summary:
 - H-001 | Records: 32 | Sales: NZD 90,600.00 | Repairs: NZD 1,400.00 | Revenue: NZD 92,000.00
 - H-002 | Records: 32 | Sales: NZD 74,900.00 | Repairs: NZD 1,280.00 | Revenue: NZD 76,180.00
 - H-003 | Records: 32 | Sales: NZD 78,200.00 | Repairs: NZD 1,200.00 | Revenue: NZD 79,400.00
+
+Email sent: 19f6e9d45933cf2c
 ```
+
+The value printed after `Email sent:` is the Gmail message ID returned by the Gmail API.
 
 ## PDF Processing Workflow
 
@@ -190,33 +240,38 @@ Hospital Summary:
 PDF Charts
 → Text Extraction
 → OpenAI Parsing
-→ Structured Records
+→ Structured Record
 → Duplicate Check
-   ├── Yes → Skip Record
-   └── No  → Save to CSV
+   ├── Duplicate → Skip Record
+   └── New Record → Save to CSV
 → parsed_records.csv
 ```
 
 Main modules:
 
-- `app/pdf_reader.py`: extracts text from PDF files
-- `app/openai_parser.py`: parses extracted text into structured data using the OpenAI API
-- `app/csv_writer.py`: saves parsed records to CSV and checks duplicates
-- `app/batch_processor.py`: processes all PDF files in a folder
+* `app/pdf_reader.py`: extracts text from PDF files
+* `app/openai_parser.py`: parses extracted text using the OpenAI API
+* `app/csv_writer.py`: saves parsed records and checks duplicates
+* `app/batch_processor.py`: processes all PDF files in a folder
 
 ## Monthly Reporting Workflow
 
 ```text
 clinic_sales_records.csv
 → Read Sales Records
-→ Monthly Sales Summary
-→ Hospital Summary
-→ Email Report Preview
+→ Calculate Monthly Totals
+→ Calculate Hospital Summaries
+→ Build Email Subject and Body
+→ Print Terminal Preview
+→ Gmail API Authentication
+→ Send Email
 ```
 
-Main module:
+Main modules:
 
-- `app/email_reporter.py`: reads sales records, calculates monthly totals, groups revenue by hospital, and prints an email preview
+* `app/email_reporter.py`: reads sales records, calculates summaries, builds the report, and coordinates email delivery
+* `app/email_sender.py`: creates email messages, authenticates with Gmail, and sends emails
+* `app/config.py`: loads configuration values from the `.env` file
 
 ## Output Files
 
@@ -226,7 +281,7 @@ Main module:
 data/parsed_records.csv
 ```
 
-This file stores structured records extracted from PDF charts.
+Stores structured records extracted from PDF charts.
 
 ### Monthly Sales Records
 
@@ -234,24 +289,43 @@ This file stores structured records extracted from PDF charts.
 data/clinic_sales_records.csv
 ```
 
-This file stores sample monthly sales records used for report generation.
+Contains sample monthly sales data used for report generation.
+
+### Gmail Authentication Token
+
+```text
+token.json
+```
+
+Created automatically after the first successful Google OAuth login.
+
+This file is used locally and must not be committed to GitHub.
 
 ## Current Status
 
 Completed MVP features:
 
-- PDF text extraction
-- OpenAI-based chart parsing
-- CSV export
-- Duplicate record prevention
-- Batch PDF processing
-- Monthly sales email report preview
+* PDF text extraction
+* OpenAI-based chart parsing
+* CSV export
+* Duplicate record prevention
+* Batch PDF processing
+* Monthly sales calculations
+* Hospital-level reporting
+* Email subject and body generation
+* Environment-based configuration
+* Gmail OAuth authentication
+* Gmail token storage and reuse
+* Gmail API email delivery
+* Basic email delivery error handling
 
 ## Future Improvements
 
-- Add real email sending with SMTP or Gmail API
-- Move email settings into environment variables
-- Add scheduled monthly reports with APScheduler
-- Store parsed records and sales transactions in PostgreSQL
-- Add Docker support
-- Add Google API integration
+* Add scheduled monthly reports with APScheduler
+* Store parsed records and sales transactions in PostgreSQL
+* Replace CSV-based storage with database repositories
+* Add Docker support
+* Add structured logging
+* Add automated tests
+* Add HTML email templates
+* Improve Gmail API error handling
