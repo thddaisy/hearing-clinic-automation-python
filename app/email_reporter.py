@@ -2,6 +2,7 @@ import csv
 import sys
 from pathlib import Path
 from app.config import REPORT_RECIPIENT_EMAIL
+from app.email_sender import send_email
 
 
 def read_sales_records(csv_path):
@@ -116,5 +117,17 @@ def main():
     print(f"Subject: {subject}")
     print(body)
 
+    try:
+        result = send_email(
+            REPORT_RECIPIENT_EMAIL,
+            subject,
+            body,
+        )
+
+        print(f"Email sent: {result['id']}")
+    except Exception as error:
+        print(f"Email sending failed: {error}")
+
+        
 if __name__ == "__main__":
     main()
