@@ -100,16 +100,19 @@ def main():
         return
     
     csv_path = sys.argv[1]
+    send_monthly_report(csv_path)
+
+
+
+def send_monthly_report(csv_path):
     records = read_sales_records(csv_path)
 
     if records is False:
-        print("CSV file not found.")
-        return
+        raise FileNotFoundError(f"CSV file not found: {csv_path}")
     
     print(f"Loaded {len(records)} records.")
 
     summary = calculate_sales_summary(records)
-
     subject, body = build_monthly_sales_email(summary)
 
     print()
@@ -125,8 +128,10 @@ def main():
         )
 
         print(f"Email sent: {result['id']}")
+
     except Exception as error:
         print(f"Email sending failed: {error}")
+        raise
 
         
 if __name__ == "__main__":
