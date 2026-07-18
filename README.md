@@ -45,6 +45,10 @@ Sales CSV
 * Save and reuse Gmail authentication tokens
 * Send monthly reports through the Gmail API
 * Load sensitive configuration values from environment variables
+* Schedule monthly report delivery with APScheduler
+* Run the scheduler in development or monthly mode
+* Save application logs to `logs/app.log`
+* Record successful jobs, failures, and error tracebacks
 
 ## Project Structure
 
@@ -59,6 +63,7 @@ hearing-clinic-automation-python/
 │   ├── batch_processor.py
 │   ├── email_reporter.py
 │   ├── email_sender.py
+│   ├── report_scheduler.py
 │   ├── config.py
 │   └── logger.py
 │
@@ -80,7 +85,7 @@ hearing-clinic-automation-python/
 └── README.md
 ```
 
-Local configuration files such as `.env`, `credentials.json`, and `token.json` are excluded from Git.
+Local configuration files and generated logs such as `.env`, `credentials.json`, `token.json`, and `logs/` are excluded from Git.
 
 ## Tech Stack
 
@@ -94,15 +99,15 @@ Current:
 * pypdf
 * python-dotenv
 * Google API Python Client
+* APScheduler
+* Python logging
 * Git / GitHub
 
 Planned:
 
 * PostgreSQL
 * Docker
-* APScheduler
 * Automated tests
-* Structured logging
 
 ## Setup
 
@@ -135,6 +140,7 @@ Make sure `.gitignore` includes:
 .venv/
 credentials.json
 token.json
+logs/
 ```
 
 ## Gmail API Setup
@@ -234,6 +240,41 @@ Email sent: 19f6e9d45933cf2c
 
 The value printed after `Email sent:` is the Gmail message ID returned by the Gmail API.
 
+### Run the report scheduler
+
+The scheduler supports development and monthly execution modes.
+
+#### Development mode
+
+```bash
+python -m app.report_scheduler dev
+```
+
+Development mode schedules the report once after 5 seconds. It is used to test the complete reporting workflow without waiting until the end of the month.
+
+#### Monthly mode
+
+```bash
+python -m app.report_scheduler monthly
+```
+
+Monthly mode keeps the scheduler running and sends the report at 5:30 PM on the last day of every month.
+
+Stop the monthly scheduler with:
+
+```text
+Ctrl + C
+```
+
+Application logs are saved to:
+
+```text
+logs/app.log
+```
+
+The log file records job start and completion messages, failures, and error tracebacks.
+
+
 ## PDF Processing Workflow
 
 ```text
@@ -257,7 +298,8 @@ Main modules:
 ## Monthly Reporting Workflow
 
 ```text
-clinic_sales_records.csv
+APScheduler
+→ Last day of each month at 17:30
 → Read Sales Records
 → Calculate Monthly Totals
 → Calculate Hospital Summaries
@@ -265,12 +307,15 @@ clinic_sales_records.csv
 → Print Terminal Preview
 → Gmail API Authentication
 → Send Email
+→ Write Execution Log
 ```
 
 Main modules:
 
 * `app/email_reporter.py`: reads sales records, calculates summaries, builds the report, and coordinates email delivery
 * `app/email_sender.py`: creates email messages, authenticates with Gmail, and sends emails
+* `app/config.py`: loads configuration values from the `.env` file
+* `app/logger.py`: writes application logs to the terminal and `logs/app.log`
 * `app/config.py`: loads configuration values from the `.env` file
 
 ## Output Files
@@ -318,14 +363,18 @@ Completed MVP features:
 * Gmail token storage and reuse
 * Gmail API email delivery
 * Basic email delivery error handling
+* APScheduler-based monthly report scheduling
+* Development and monthly scheduler modes
+* File-based application logging
+* Scheduler failure logging with error tracebacks
 
 ## Future Improvements
 
-* Add scheduled monthly reports with APScheduler
 * Store parsed records and sales transactions in PostgreSQL
 * Replace CSV-based storage with database repositories
 * Add Docker support
-* Add structured logging
 * Add automated tests
+* Add GitHub Actions CI
 * Add HTML email templates
 * Improve Gmail API error handling
+* Add log rotation and retention
