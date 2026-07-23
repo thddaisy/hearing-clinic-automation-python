@@ -6,11 +6,11 @@ This project rebuilds an existing n8n automation workflow in Python using a modu
 
 ## Overview
 
-The project currently has two main workflows:
+The project contains two main automation workflows.
+
+### PDF Processing Workflow
 
 ```text
-1. PDF Processing Workflow
-
 PDF files
 → text extraction
 → OpenAI parsing
@@ -19,9 +19,9 @@ PDF files
 → CSV export
 ```
 
-```text
-2. Monthly Sales Reporting Workflow
+### Monthly Sales Reporting Workflow
 
+```text
 Sales CSV
 → monthly sales summary
 → hospital-level summary
@@ -40,15 +40,16 @@ Sales CSV
 * Calculate total sales, repair fees, and revenue
 * Generate hospital-level sales summaries
 * Build a monthly sales email subject and body
-* Preview the generated report in the terminal
+* Preview generated reports in the terminal
 * Authenticate with Google using OAuth 2.0
 * Save and reuse Gmail authentication tokens
-* Send monthly reports through the Gmail API
-* Load sensitive configuration values from environment variables
-* Schedule monthly report delivery with APScheduler
-* Run the scheduler in development or monthly mode
+* Send reports through the Gmail API
+* Load sensitive configuration from environment variables
+* Schedule monthly reports with APScheduler
+* Support development and monthly scheduler modes
 * Save application logs to `logs/app.log`
-* Record successful jobs, failures, and error tracebacks
+* Record failures and error tracebacks
+* Run automated tests with `pytest`
 
 ## Project Structure
 
@@ -69,17 +70,14 @@ hearing-clinic-automation-python/
 │
 ├── data/
 │   ├── sample_pdfs/
-│   │   ├── sample_001.pdf
-│   │   ├── sample_002.pdf
-│   │   ├── sample_003.pdf
-│   │   ├── sample_004.pdf
-│   │   └── sample_005.pdf
-│   │
 │   ├── parsed_records.csv
 │   └── clinic_sales_records.csv
 │
-├── docs/
 ├── tests/
+│   ├── test_csv_writer.py
+│   └── test_email_reporter.py
+│
+├── docs/
 ├── .gitignore
 ├── requirements.txt
 └── README.md
@@ -88,8 +86,6 @@ hearing-clinic-automation-python/
 Local configuration files and generated logs such as `.env`, `credentials.json`, `token.json`, and `logs/` are excluded from Git.
 
 ## Tech Stack
-
-Current:
 
 * Python
 * OpenAI API
@@ -101,13 +97,14 @@ Current:
 * Google API Python Client
 * APScheduler
 * Python logging
+* pytest
 * Git / GitHub
 
 Planned:
 
 * PostgreSQL
 * Docker
-* Automated tests
+* GitHub Actions CI
 
 ## Setup
 
@@ -145,18 +142,18 @@ logs/
 
 ## Gmail API Setup
 
-To enable email delivery:
+To enable Gmail delivery:
 
 1. Enable the Gmail API in Google Cloud.
 2. Configure the OAuth consent screen.
-3. Create an OAuth Client ID using the `Desktop app` application type.
+3. Create an OAuth Client ID using the `Desktop app` type.
 4. Download the OAuth JSON file.
 5. Rename it to `credentials.json`.
 6. Place it in the project root directory.
 
-The first time the reporting workflow runs, a browser window opens for Google login and permission approval.
+The first time the Gmail workflow runs, a browser window opens for login and permission approval.
 
-After successful authentication, the program automatically creates:
+After successful authentication, the application creates:
 
 ```text
 token.json
@@ -168,15 +165,15 @@ This file stores the authorized Gmail credentials locally and is reused for futu
 
 Run all commands from the project root directory.
 
-### Process a single PDF
+### Process a Single PDF
 
 ```bash
 python -m app.openai_parser data/sample_pdfs/sample_001.pdf
 ```
 
-This extracts text from the PDF, sends it to the OpenAI API, converts the response into structured data, and saves the result to CSV.
+This command extracts text from the PDF, sends it to the OpenAI API, converts the result into structured data, checks for duplicates, and saves the record to CSV.
 
-### Process multiple PDFs
+### Process Multiple PDFs
 
 ```bash
 python -m app.batch_processor data/sample_pdfs
@@ -191,16 +188,10 @@ Processing: data\sample_pdfs\sample_001.pdf
 Saved to CSV.
 
 Processing: data\sample_pdfs\sample_002.pdf
-Saved to CSV.
-```
-
-If a record with the same `chart_no` already exists, it is skipped.
-
-```text
 Duplicate record. Skipping.
 ```
 
-### Generate and send a monthly sales report
+### Generate and Send a Monthly Sales Report
 
 ```bash
 python -m app.email_reporter data/clinic_sales_records.csv
@@ -240,11 +231,9 @@ Email sent: 19f6e9d45933cf2c
 
 The value printed after `Email sent:` is the Gmail message ID returned by the Gmail API.
 
-### Run the report scheduler
+### Run the Report Scheduler
 
-The scheduler supports development and monthly execution modes.
-
-#### Development mode
+Development mode:
 
 ```bash
 python -m app.report_scheduler dev
@@ -252,7 +241,7 @@ python -m app.report_scheduler dev
 
 Development mode schedules the report once after 5 seconds. It is used to test the complete reporting workflow without waiting until the end of the month.
 
-#### Monthly mode
+Monthly mode:
 
 ```bash
 python -m app.report_scheduler monthly
@@ -260,7 +249,7 @@ python -m app.report_scheduler monthly
 
 Monthly mode keeps the scheduler running and sends the report at 5:30 PM on the last day of every month.
 
-Stop the monthly scheduler with:
+Stop the scheduler with:
 
 ```text
 Ctrl + C
@@ -272,51 +261,58 @@ Application logs are saved to:
 logs/app.log
 ```
 
-The log file records job start and completion messages, failures, and error tracebacks.
+## Automated Tests
 
+The project uses `pytest` to test reporting calculations and duplicate-prevention behavior.
 
-## PDF Processing Workflow
+Run all tests:
 
-```text
-PDF Charts
-→ Text Extraction
-→ OpenAI Parsing
-→ Structured Record
-→ Duplicate Check
-   ├── Duplicate → Skip Record
-   └── New Record → Save to CSV
-→ parsed_records.csv
+```bash
+python -m pytest
 ```
 
-Main modules:
+Run tests with detailed test names:
+
+```bash
+python -m pytest -v
+```
+
+The current test suite covers:
+
+* total record counts
+* total sales, repair fees, and revenue
+* hospital-level summaries
+* email subject and body generation
+* empty sales records
+* invalid numeric values
+* duplicate records
+* non-duplicate records
+* missing CSV files
+
+CSV-related tests use pytest's `tmp_path` fixture to create temporary files. This prevents the tests from modifying real project data.
+
+Current result:
+
+```text
+8 passed
+```
+
+## Main Modules
+
+### PDF Processing
 
 * `app/pdf_reader.py`: extracts text from PDF files
 * `app/openai_parser.py`: parses extracted text using the OpenAI API
-* `app/csv_writer.py`: saves parsed records and checks duplicates
-* `app/batch_processor.py`: processes all PDF files in a folder
+* `app/csv_writer.py`: saves records and checks duplicates
+* `app/batch_processor.py`: processes multiple PDF files
 
-## Monthly Reporting Workflow
+### Monthly Reporting
 
-```text
-APScheduler
-→ Last day of each month at 17:30
-→ Read Sales Records
-→ Calculate Monthly Totals
-→ Calculate Hospital Summaries
-→ Build Email Subject and Body
-→ Print Terminal Preview
-→ Gmail API Authentication
-→ Send Email
-→ Write Execution Log
-```
-
-Main modules:
-
-* `app/email_reporter.py`: reads sales records, calculates summaries, builds the report, and coordinates email delivery
-* `app/email_sender.py`: creates email messages, authenticates with Gmail, and sends emails
-* `app/config.py`: loads configuration values from the `.env` file
-* `app/logger.py`: writes application logs to the terminal and `logs/app.log`
-* `app/config.py`: loads configuration values from the `.env` file
+* `app/email_reporter.py`: reads sales data, calculates summaries, and builds the report
+* `app/email_sender.py`: authenticates with Gmail and sends emails
+* `app/report_scheduler.py`: schedules development and monthly report jobs
+* `app/config.py`: loads environment variables
+* `app/logger.py`: writes terminal and file logs
 
 ## Output Files
 
@@ -342,9 +338,9 @@ Contains sample monthly sales data used for report generation.
 token.json
 ```
 
-Created automatically after the first successful Google OAuth login.
+Created automatically after the first successful OAuth login.
 
-This file is used locally and must not be committed to GitHub.
+This file must remain local and must not be committed to GitHub.
 
 ## Current Status
 
@@ -360,21 +356,22 @@ Completed MVP features:
 * Email subject and body generation
 * Environment-based configuration
 * Gmail OAuth authentication
-* Gmail token storage and reuse
 * Gmail API email delivery
-* Basic email delivery error handling
-* APScheduler-based monthly report scheduling
-* Development and monthly scheduler modes
-* File-based application logging
-* Scheduler failure logging with error tracebacks
+* APScheduler-based reporting
+* File-based logging
+* Error logging with tracebacks
+* Automated tests with pytest
+* Empty and invalid input tests
+* Temporary CSV test files using pytest fixtures
 
 ## Future Improvements
 
 * Store parsed records and sales transactions in PostgreSQL
-* Replace CSV-based storage with database repositories
+* Replace CSV storage with database repositories
 * Add Docker support
-* Add automated tests
 * Add GitHub Actions CI
+* Add mocking tests for Gmail and external APIs
 * Add HTML email templates
 * Improve Gmail API error handling
 * Add log rotation and retention
+
