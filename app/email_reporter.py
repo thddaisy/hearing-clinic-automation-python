@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from app.config import REPORT_RECIPIENT_EMAIL
 from app.email_sender import send_email
+from app.database import get_sales_summary, get_hospital_sales_summary
 
 
 def read_sales_records(csv_path):
@@ -62,6 +63,28 @@ def calculate_sales_summary(records):
 
     return summary
 
+
+def calculate_db_sales_summary():
+    total_summary = get_sales_summary()
+    hospital_rows = get_hospital_sales_summary()
+
+    hospital_summary = {}
+
+    for row in hospital_rows:
+        hospital_summary[row["hospital_id"]] = {
+            "record_count": row["total_records"],
+            "total_sales": row["total_sales"],
+            "total_repair_fees": row["total_repair_fees"],
+            "total_revenue": row["total_revenue"],
+        }
+
+    return {
+        "total_records": total_summary["total_records"],
+        "total_sales": total_summary["total_sales"],
+        "total_repair_fees": total_summary["total_repair_fees"],
+        "total_revenue": total_summary["total_revenue"],
+        "hospital_summary": hospital_summary,
+    }
 
 def build_monthly_sales_email(summary):
     subject = "Monthly Hearing Clinic Sales Report"
@@ -133,6 +156,28 @@ def send_monthly_report(csv_path):
         print(f"Email sending failed: {error}")
         raise
 
+
+def send_monthly_db_report():
+    summary = calculate_db_sales_summary()
+    subject, body = build_monthly_sales_email(summary)
+
+    print()
+    print(f"To: {REPORT_RECIPIENT_EMAIL}")
+    print(f"Subject: {subject}")
+    print(body)
+
+    try:
+        result = send_email(
+            REPORT_RECIPIENT_EMAIL,
+            subject,
+            body,
+        )
+
+        print(f"Email sent: {result['id']}")
+
+    except Exception as error:
+        print(f"Email sending failed: {error}")
+        raise
         
 if __name__ == "__main__":
     main()
