@@ -4,22 +4,27 @@ from pathlib import Path
 from app.pdf_reader import extract_text_from_pdf
 from app.openai_parser import parse_hearing_text
 from app.csv_writer import save_record_to_csv, is_duplicate_record
+from app.database import save_parsed_record
+
+
+CSV_PATH = "data/parsed_records.csv"
 
 
 def main():
     if len(sys.argv) < 2:
         print("Usage: python -m app.batch_processor <folder_path>")
         return
-    
+
     folder_path = Path(sys.argv[1])
 
     if not folder_path.exists():
         print("Folder does not exist.")
         return
+
     if not folder_path.is_dir():
         print("Path is not a folder.")
         return
-    
+
     pdf_files = list(folder_path.glob("*.pdf"))
 
     if not pdf_files:
@@ -41,12 +46,18 @@ def main():
             print("Parsing failed. Skipping.")
             continue
 
-        if is_duplicate_record(result,"data/parsed_records.csv"):
-            print("Duplicate record. Skipping.")
-            continue
+        if is_duplicate_record(result, CSV_PATH):
+            print("CSV duplicate. Skipping CSV save.")
+        else:
+            save_record_to_csv(result, CSV_PATH)
+            print("Saved to CSV.")
 
-        save_record_to_csv(result, "data/parsed_records.csv")
-        print("Saved to CSV.")
+        db_saved = save_parsed_record(result)
+
+        if db_saved:
+            print("Saved to PostgreSQL.")
+        else:
+            print("PostgreSQL duplicate. Skipping DB save.")
 
 
 if __name__ == "__main__":
